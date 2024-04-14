@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-app
+  labels:
+    app: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      containers:
+      - name: server-app
+        image: flask-backend:112
+        ports:
+        - containerPort: 5000
+      imagePullSecrets:
+      - name: sigmoid-acr-new
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: server-app
+spec:
+  selector:
+    app: server
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
+

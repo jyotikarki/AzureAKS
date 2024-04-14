@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "backend-chart.fullname" . }}
+  labels:
+    {{- include "backend-chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "backend-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "backend-chart.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: fs-file-max
+          image: busybox
+          command:
+            - sh
+            - -c
+            - sysctl -w fs.file-max=65535
+          securityContext:
+            privileged: true
+        - name: tcp-keepalive-time
+          image: busybox
+          command:
+            - sh
+            - -c
+            - sysctl -w net.ipv4.tcp_keepalive_time=60
+          securityContext:
+            privileged: true
+        - name: tcp-keepalive-intvl
+          image: busybox
+          command:
+            - sh
+            - -c
+            - sysctl -w net.ipv4.tcp_keepalive_intvl=10
+          securityContext:
+            privileged: true
+        - name: tcp-keepalive-probes
+          image: busybox
+          command:
+            - sh
+            - -c
+            - sysctl -w net.ipv4.tcp_keepalive_probes=5
+          securityContext:
+            privileged: true
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.containerPort }}
+              protocol: TCP
+          # livenessProbe:
+          #   initialDelaySeconds: 50
+          #   tcpSocket:
+          #     port: 5000
+          # readinessProbe:
+          #   initialDelaySeconds: 50
+          #   tcpSocket:
+              # port: 5000
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
